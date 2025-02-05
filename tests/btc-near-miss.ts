@@ -212,15 +212,45 @@ describe("proof_of_wasted_work", () => {
     data.writeUInt32LE(0, 28);  // numError
     data.copy(mockData, 8);
 
+    // Write the mock data to the account
+    const writeIx = SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: mockFeed.publicKey,
+      space: mockData.length,
+      lamports: await provider.connection.getMinimumBalanceForRentExemption(mockData.length),
+      programId: expectedOwner,
+    });
+    
+    await provider.sendAndConfirm(
+      new Transaction()
+        .add(writeIx)
+        .add(SystemProgram.assign({
+          accountPubkey: mockFeed.publicKey,
+          programId: expectedOwner,
+        })), 
+      [wallet, mockFeed]
+    );
+    
+    // Write the actual data
+    await provider.connection.getAccountInfo(mockFeed.publicKey);
+    const tx = new Transaction().add(
+      new TransactionInstruction({
+        keys: [{ pubkey: mockFeed.publicKey, isSigner: true, isWritable: true }],
+        programId: expectedOwner,
+        data: mockData,
+      })
+    );
+    await provider.sendAndConfirm(tx, [mockFeed]);
+
     console.log("Transferring SOL to miner...");
-    const tx = new anchor.web3.Transaction().add(
+    const tx2 = new anchor.web3.Transaction().add(
       anchor.web3.SystemProgram.transfer({
         fromPubkey: wallet.publicKey,
         toPubkey: miner.publicKey,
         lamports: LAMPORTS_PER_SOL / 2,
       })
     );
-    await provider.sendAndConfirm(tx);
+    await provider.sendAndConfirm(tx2);
 
     console.log("Creating token mint...");
     console.log("systemProgram:", SystemProgram, SystemProgram.programId.toString());
