@@ -365,6 +365,29 @@ describe("proof_of_wasted_work", () => {
       extraNonce: new anchor.BN(0)
     };
 
+    const [nearMissMint] = PublicKey.findProgramAddressSync(
+      [Buffer.from("nearmiss_mint", "utf8")],
+      program.programId
+    );
+    const [oracleMaintenance] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle_maintenance", "utf8")],
+      program.programId
+    );
+    const [treasury] = PublicKey.findProgramAddressSync(
+      [Buffer.from("treasury", "utf8")],
+      program.programId
+    );
+
+    // Get associated token account for miner
+    const minerATA = await anchor.utils.token.associatedAddress({
+      mint: tokenMint.publicKey,
+      owner: miner.publicKey
+    });
+
+    // Instead of computing an associated token account for btc_tip_feed,
+    // use the actual mock feed public key.
+    const btcTipFeed = mockFeed.publicKey;
+
     // Attempt submission with invalid data
     try {
       await program.methods
@@ -378,14 +401,26 @@ describe("proof_of_wasted_work", () => {
           invalidData.extraNonce
         )
         .accounts({
-          // ... accounts ...
+          mintAuthority: miner.publicKey,
+          nearMissMint,
+          mintAuthorityInfo: miner.publicKey,
+          oracleMaintenance,
+          treasury,
+          tokenMint: tokenMint.publicKey,
+          tokenAccount: minerATA,
+          btcTipFeed: btcTipFeed,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .signers([miner])
         .rpc();
       
       expect.fail("Should have rejected invalid submission");
     } catch (error) {
-      expect(error.toString()).to.include("InvalidNearMiss");
+      console.error("Error details:", error);
+      expect(error.toString()).to.include("stale");
+      throw error;
     }
   });
 });

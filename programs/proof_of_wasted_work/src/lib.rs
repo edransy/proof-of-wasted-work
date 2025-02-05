@@ -3,12 +3,10 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{
     native_token::LAMPORTS_PER_SOL,
     program::invoke,
-    system_instruction,
-    pubkey
+    system_instruction
 };
 use anchor_spl::token::{self, Mint, TokenAccount, MintTo, Token};
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_lang::accounts::account_loader::AccountLoader;
 
 use sha2::{Sha256, Digest};
 use switchboard_v2::AggregatorAccountData;
@@ -56,7 +54,7 @@ pub mod proof_of_wasted_work {
         Ok(())
     }
 
-    pub fn create_mint(ctx: Context<CreateMint>) -> Result<()> {
+    pub fn create_mint(_ctx: Context<CreateMint>) -> Result<()> {
         // The mint is initialized automatically by Anchor's constraints
         Ok(())
     }
@@ -357,12 +355,6 @@ fn verify_near_miss(
     Ok(true)
 }
 
-/// Dummy conversion from oracle difficulty (as a raw value) to Bitcoin's compact bits.
-/// Replace or enhance this function to perform the correct conversion.
-// fn difficulty_to_compact(value: i128) -> Result<u32> {
-//     // For illustration: assume the oracle feeds the compact bits directly.
-//     value.try_into().map_err(|_| ErrorCode::InvalidOracleValue.into())
-// }
 
 /// Processes a valid submission by updating nonce records and minting tokens.
 /// For each Bitcoin block (as measured by the height feed), nonces are stored to prevent duplicates.
@@ -407,73 +399,6 @@ fn process_valid_submission(ctx: &mut Context<SubmitNearMiss>, nonce: u32) -> Re
     Ok(())
 }
 
-/// -----------------------
-/// Bitcoin Header Helpers
-/// -----------------------
-
-/// Constructs a Bitcoin block header as a Vec<u8>.
-// fn build_bitcoin_header(
-//     version: u32,
-//     prev_hash: [u8; 32],
-//     merkle_root: [u8; 32],
-//     timestamp: u32,
-//     bits: u32,
-//     nonce: u32,
-//     extra_nonce: u64,
-// ) -> [u8; 88] {
-//     let mut header = [0u8; 88];
-//     let mut offset = 0;
-    
-//     // Write in smaller chunks
-//     header[offset..offset+4].copy_from_slice(&version.to_le_bytes());
-//     offset += 4;
-    
-//     header[offset..offset+32].copy_from_slice(&prev_hash);
-//     offset += 32;
-    
-//     header[offset..offset+32].copy_from_slice(&merkle_root);
-//     offset += 32;
-    
-//     header[offset..offset+4].copy_from_slice(&timestamp.to_le_bytes());
-//     offset += 4;
-    
-//     header[offset..offset+4].copy_from_slice(&bits.to_le_bytes());
-//     offset += 4;
-    
-//     header[offset..offset+4].copy_from_slice(&nonce.to_le_bytes());
-//     offset += 4;
-    
-//     header[offset..offset+8].copy_from_slice(&extra_nonce.to_le_bytes());
-    
-//     header
-// }
-
-/// Computes Bitcoin's double SHA-256 hash.
-// fn compute_bitcoin_hash(data: &[u8]) -> [u8; 32] {
-//     let first_hash = Sha256::digest(data);
-//     let second_hash = Sha256::digest(&first_hash);
-//     second_hash.into()
-// }
-
-// /// Returns the number of trailing zero bytes in the hash.
-// fn count_trailing_zeros(hash: &[u8]) -> usize {
-//     hash.iter().rev().take_while(|&&b| b == 0).count()
-// }
-
-/// -----------------------
-/// Switchboard Oracle Helpers
-/// -----------------------
-
-/// Checks that the provided feed is updated within an acceptable window (e.g., 10 minutes).
-// fn check_feed_staleness(feed: &AccountLoader<AggregatorAccountData>) -> Result<()> {
-//     let latest_round = feed.load()?.latest_confirmed_round;
-//     let last_update = latest_round.round_open_timestamp;
-//     let current_time = Clock::get()?.unix_timestamp;
-//     if current_time - last_update >= 600 {
-//         return Err(ErrorCode::StaleFeed.into());
-//     }
-//     Ok(())
-// }
 
 /// Parses the tip data returned by the oracle.
 fn get_tip_data(feed: &AccountInfo) -> Result<BlockTip> {
