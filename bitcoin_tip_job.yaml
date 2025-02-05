@@ -1,0 +1,6 @@
+name: Bitcoin Block Height
+tasks:
+  - httpTask:
+      url: "https://blockstream.info/api/blocks/tip"
+  - jsonParseTask:
+      path: "$[0].height"

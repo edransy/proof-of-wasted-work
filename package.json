@@ -1,0 +1,35 @@
+{
+  "name": "support-hub-deepseek",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "test": "mocha -r ts-node/register -r tsconfig-paths/register --timeout 1000000 tests/**/*.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.30.1",
+    "@switchboard-xyz/sbv2-utils": "^0.1.55",
+    "@switchboard-xyz/switchboard-v2": "^0.0.174"
+  },
+  "devDependencies": {
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/spl-token": "^0.3.1",
+    "@solana/web3.js": "^1.98.0",
+    "@types/chai": "^4.3.8",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.1",
+    "chai": "^4.5.0",
+    "js-sha256": "^0.11.0",
+    "mocha": "^10.4.0",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
+  },
+  "description": "Welcome to **ProofOfWastedWork** and **NearMissToken** – an innovative protocol that monetizes the \"wasted\" computational work from Bitcoin mining. This project leverages the idea that Bitcoin miners produce countless \"near misses\" (i.e., proofs-of-work that nearly satisfy Bitcoin's difficulty requirements) which are normally discarded. Our system rewards those wasted efforts with tokens on the Solana blockchain.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": ""
+}

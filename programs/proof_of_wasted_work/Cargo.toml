@@ -1,0 +1,29 @@
+[package]
+name = "proof_of_wasted_work"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "proof_of_wasted_work"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+testing = []
+anchor-debug = []
+
+[dependencies]
+anchor-lang = { version = "0.28.0", features = ["init-if-needed"] }
+anchor-spl = "0.28.0"
+solana-program = "=1.16.15"
+switchboard-v2 = "0.4.0"
+sha2 = "0.10.7"
+
+[dev-dependencies]
+solana-program-test = "=1.16.15"
+solana-sdk = "=1.16.15"

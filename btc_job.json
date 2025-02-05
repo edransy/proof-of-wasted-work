@@ -1,0 +1,17 @@
+{
+  "weight": 1,
+  "name": "BTC/USD",
+  "metadata": "Get the current price of BTC/USD",
+  "data": [
+    {
+      "httpTask": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
+      }
+    },
+    {
+      "jsonParseTask": {
+        "path": "$.bitcoin.usd"
+      }
+    }
+  ]
+} 

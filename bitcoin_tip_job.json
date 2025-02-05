@@ -1,0 +1,16 @@
+{
+  "name": "Crypto Price Fetch",
+  "metadata": "Fetch BTC/USD price from an API",
+  "tasks": [
+    {
+      "httpTask": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
+      }
+    },
+    {
+      "jsonParseTask": {
+        "path": "$.bitcoin.usd"
+      }
+    }
+  ]
+}
