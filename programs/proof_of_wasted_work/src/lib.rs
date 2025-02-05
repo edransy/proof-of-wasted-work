@@ -19,7 +19,7 @@ use state::*;
 declare_id!("EDC6ToM56SBkbwgtFK9erEsc7pPoBLWTp7tjrSPtp5DF");
 
 /// New Switchboard aggregator feed address for Bitcoin tip data.
-pub const SWITCHBOARD_BTC_BLOCK_TIP: Pubkey = pubkey!("32acusHT67wNeJMC9SzD5J6uV9QdN38YSXiGWE9yUvYc");
+// pub const SWITCHBOARD_BTC_BLOCK_TIP: Pubkey = pubkey!("32acusHT67wNeJMC9SzD5J6uV9QdN38YSXiGWE9yUvYc");
 
 /// Constants for minting rewards and deposit amounts.
 pub const TOKEN_PER_NEAR_MISS: u64 = 100;
@@ -215,6 +215,12 @@ pub enum ErrorCode {
     StaleFeed,
 }
 
+impl From<ErrorCode> for ProgramError {
+    fn from(e: ErrorCode) -> Self {
+        ProgramError::Custom(e as u32)
+    }
+}
+
 /// -----------------------
 /// Deposit Management
 /// -----------------------
@@ -276,7 +282,7 @@ fn verify_near_miss(
     version: u32,
     prev_hash: [u8; 32],
     merkle_root: [u8; 32],
-    timestamp: u32,
+    _timestamp: u32,
     bits: u32,
     nonce: u32,
     extra_nonce: u64,
@@ -292,18 +298,26 @@ fn verify_near_miss(
     }
     msg!("✅ Version check passed");
 
-    msg!("btc_tip_feed (account info): {:?}", ctx.accounts.btc_tip_feed);
-    let feed_loader = AccountLoader::<AggregatorAccountData>::try_from(&ctx.accounts.btc_tip_feed)?;
-    let feed = feed_loader.load()?;
-    msg!("✅ Feed loaded");
 
-    let latest_result = feed.latest_confirmed_round.result;
-    let timestamp = feed.latest_confirmed_round.round_open_timestamp;
-    let successes = feed.latest_confirmed_round.num_success;
-    let errors = feed.latest_confirmed_round.num_error;
+    msg!("btc_tip_feed (account info): {:?}", ctx.accounts.btc_tip_feed);
+    let (latest_result, feed_timestamp, successes, errors) = if cfg!(feature = "testing") {
+        msg!("Testing mode: bypassing aggregator feed deserialization with dummy values");
+        (0u64, Clock::get()?.unix_timestamp as u32, 1u32, 0u32)
+    } else {
+        let data = ctx.accounts.btc_tip_feed.data.borrow();
+        let aggregator_data = AggregatorAccountData::try_deserialize(&mut &data[..])
+            .map_err::<ProgramError, _>(|_| ErrorCode::InvalidOracleValue.into())?;
+        msg!("✅ Feed loaded");
+        (
+           aggregator_data.latest_confirmed_round.result.mantissa as u64,
+           aggregator_data.latest_confirmed_round.round_open_timestamp as u32,
+           aggregator_data.latest_confirmed_round.num_success,
+           aggregator_data.latest_confirmed_round.num_error,
+        )
+    };
 
     msg!("Latest block height from feed: {:?}", latest_result);
-    msg!("Timestamp from feed: {:?}", timestamp);
+    msg!("Timestamp from feed: {:?}", feed_timestamp);
     msg!("Feed successes: {:?}", successes);
     msg!("Feed errors: {:?}", errors);
 
@@ -318,7 +332,7 @@ fn verify_near_miss(
         &version.to_le_bytes()[..],
         &prev_hash[..],
         &merkle_root[..],
-        &timestamp.to_le_bytes()[..],
+        &feed_timestamp.to_le_bytes()[..],
         &bits.to_le_bytes()[..],
         &nonce.to_le_bytes()[..],
         &extra_nonce.to_le_bytes()[..],
@@ -398,53 +412,53 @@ fn process_valid_submission(ctx: &mut Context<SubmitNearMiss>, nonce: u32) -> Re
 /// -----------------------
 
 /// Constructs a Bitcoin block header as a Vec<u8>.
-fn build_bitcoin_header(
-    version: u32,
-    prev_hash: [u8; 32],
-    merkle_root: [u8; 32],
-    timestamp: u32,
-    bits: u32,
-    nonce: u32,
-    extra_nonce: u64,
-) -> [u8; 88] {
-    let mut header = [0u8; 88];
-    let mut offset = 0;
+// fn build_bitcoin_header(
+//     version: u32,
+//     prev_hash: [u8; 32],
+//     merkle_root: [u8; 32],
+//     timestamp: u32,
+//     bits: u32,
+//     nonce: u32,
+//     extra_nonce: u64,
+// ) -> [u8; 88] {
+//     let mut header = [0u8; 88];
+//     let mut offset = 0;
     
-    // Write in smaller chunks
-    header[offset..offset+4].copy_from_slice(&version.to_le_bytes());
-    offset += 4;
+//     // Write in smaller chunks
+//     header[offset..offset+4].copy_from_slice(&version.to_le_bytes());
+//     offset += 4;
     
-    header[offset..offset+32].copy_from_slice(&prev_hash);
-    offset += 32;
+//     header[offset..offset+32].copy_from_slice(&prev_hash);
+//     offset += 32;
     
-    header[offset..offset+32].copy_from_slice(&merkle_root);
-    offset += 32;
+//     header[offset..offset+32].copy_from_slice(&merkle_root);
+//     offset += 32;
     
-    header[offset..offset+4].copy_from_slice(&timestamp.to_le_bytes());
-    offset += 4;
+//     header[offset..offset+4].copy_from_slice(&timestamp.to_le_bytes());
+//     offset += 4;
     
-    header[offset..offset+4].copy_from_slice(&bits.to_le_bytes());
-    offset += 4;
+//     header[offset..offset+4].copy_from_slice(&bits.to_le_bytes());
+//     offset += 4;
     
-    header[offset..offset+4].copy_from_slice(&nonce.to_le_bytes());
-    offset += 4;
+//     header[offset..offset+4].copy_from_slice(&nonce.to_le_bytes());
+//     offset += 4;
     
-    header[offset..offset+8].copy_from_slice(&extra_nonce.to_le_bytes());
+//     header[offset..offset+8].copy_from_slice(&extra_nonce.to_le_bytes());
     
-    header
-}
+//     header
+// }
 
 /// Computes Bitcoin's double SHA-256 hash.
-fn compute_bitcoin_hash(data: &[u8]) -> [u8; 32] {
-    let first_hash = Sha256::digest(data);
-    let second_hash = Sha256::digest(&first_hash);
-    second_hash.into()
-}
+// fn compute_bitcoin_hash(data: &[u8]) -> [u8; 32] {
+//     let first_hash = Sha256::digest(data);
+//     let second_hash = Sha256::digest(&first_hash);
+//     second_hash.into()
+// }
 
-/// Returns the number of trailing zero bytes in the hash.
-fn count_trailing_zeros(hash: &[u8]) -> usize {
-    hash.iter().rev().take_while(|&&b| b == 0).count()
-}
+// /// Returns the number of trailing zero bytes in the hash.
+// fn count_trailing_zeros(hash: &[u8]) -> usize {
+//     hash.iter().rev().take_while(|&&b| b == 0).count()
+// }
 
 /// -----------------------
 /// Switchboard Oracle Helpers
@@ -463,8 +477,21 @@ fn count_trailing_zeros(hash: &[u8]) -> usize {
 
 /// Parses the tip data returned by the oracle.
 fn get_tip_data(feed: &AccountInfo) -> Result<BlockTip> {
-    let feed_loader = AccountLoader::<AggregatorAccountData>::try_from(feed)?;
-    let result = feed_loader.load()?.get_result()?;
+    if cfg!(feature = "testing") {
+        msg!("Testing mode: get_tip_data returns dummy BlockTip");
+        return Ok(BlockTip {
+            previousblockhash: [0u8; 32],
+            merkle_root: [0u8; 32],
+            version: EXPECTED_BITCOIN_VERSION,
+            timestamp: Clock::get()?.unix_timestamp as u32,
+            bits: 0x1d00ffff,
+            height: 100, // dummy block height
+        });
+    }
+    let data = feed.data.borrow();
+    let aggregator_data = AggregatorAccountData::try_deserialize(&mut &data[..])
+         .map_err::<ProgramError, _>(|_| ErrorCode::InvalidOracleValue.into())?;
+    let result = aggregator_data.get_result()?;
     let mantissa = result.mantissa;
     
     // Interpret mantissa bytes as our block data

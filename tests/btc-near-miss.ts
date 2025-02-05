@@ -146,7 +146,6 @@ describe("proof_of_wasted_work", () => {
 
   // Store mockFeed in a variable accessible to tests
   let mockFeed: Keypair;
-  let btcATA: PublicKey;
 
   before(async () => {
     // Subscribe to program logs
@@ -175,8 +174,8 @@ describe("proof_of_wasted_work", () => {
       SystemProgram.createAccount({
         fromPubkey: wallet.publicKey,
         newAccountPubkey: mockFeed.publicKey,
-        space: 1024,
-        lamports: await provider.connection.getMinimumBalanceForRentExemption(1024),
+        space: 512,
+        lamports: await provider.connection.getMinimumBalanceForRentExemption(512),
         programId: expectedOwner
       })
     );
@@ -194,7 +193,7 @@ describe("proof_of_wasted_work", () => {
     const feedInfo = await provider.connection.getAccountInfo(mockFeed.publicKey);
     console.log("Feed info:", feedInfo);
     // Write mock data with correct AggregatorAccountData discriminator
-    const mockData = Buffer.alloc(1024);
+    const mockData = Buffer.alloc(512);
     // Compute the discriminator as the first 8 bytes of sha256("account:AggregatorAccountData")
     const aggregatorDiscriminatorArray = sha256.create()
       .update("account:AggregatorAccountData")
@@ -212,35 +211,14 @@ describe("proof_of_wasted_work", () => {
     data.writeUInt32LE(0, 28);  // numError
     data.copy(mockData, 8);
 
-    // Write the mock data to the account
-    const writeIx = SystemProgram.createAccount({
-      fromPubkey: wallet.publicKey,
-      newAccountPubkey: mockFeed.publicKey,
-      space: mockData.length,
-      lamports: await provider.connection.getMinimumBalanceForRentExemption(mockData.length),
-      programId: expectedOwner,
-    });
-    
-    await provider.sendAndConfirm(
-      new Transaction()
-        .add(writeIx)
-        .add(SystemProgram.assign({
-          accountPubkey: mockFeed.publicKey,
-          programId: expectedOwner,
-        })), 
-      [wallet, mockFeed]
-    );
-    
-    // Write the actual data
-    await provider.connection.getAccountInfo(mockFeed.publicKey);
-    const tx = new Transaction().add(
-      new TransactionInstruction({
-        keys: [{ pubkey: mockFeed.publicKey, isSigner: true, isWritable: true }],
-        programId: expectedOwner,
-        data: mockData,
-      })
-    );
-    await provider.sendAndConfirm(tx, [mockFeed]);
+    console.log("mockData:", mockData.toString('hex'));
+
+    // Force update the account's data using an internal RPC call.
+    // Note: This uses a private method and casts connection to any for test usage.
+    await (provider.connection as any)._rpcRequest("setAccountData", [
+      mockFeed.publicKey.toBase58(),
+      mockData.toString("base64")
+    ]);
 
     console.log("Transferring SOL to miner...");
     const tx2 = new anchor.web3.Transaction().add(
