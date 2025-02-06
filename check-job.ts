@@ -13,8 +13,11 @@ async function main() {
     publicKey: new PublicKey(JOB_KEY)
   });
 
+  console.log(jobAccount);
+
   // Get job data
   const jobData = await jobAccount.loadData();
+  console.log(jobData);
   console.log('\nJob Data:');
   console.log('Name:', Buffer.from(jobData.name).toString());
   console.log('Authority:', jobData.authority.toString());
